@@ -20,8 +20,7 @@ To get started with the **PDF Chat Assistant**, you will need to have:
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/rk-vahista/pdf-chat-assistant.git
-   cd pdf-chat-assistant
+   git clone https://github.com/MonsieurNam/ChatWF.git
    ```
 
 2. **Install the Required Packages**
