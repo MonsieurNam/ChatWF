@@ -1,14 +1,7 @@
-# 📚 PDF Chat Assistant - Chat with Your Documents!
+# 📚 PDF Chat Assistant optimize for Vietnamese !
 
 Welcome to the **PDF Chat Assistant**! This application allows you to upload PDF files and chat with them using the power of AI. Powered by **LangChain**, **FAISS**, and **Groq's LLM**, it brings your static documents to life by giving you answers to your questions based on their content!
 
-## ✨ Key Features
-
-- **Natural Language Interaction**: Ask questions and get AI-generated responses based on your PDFs.
-- **PDF Document Processing**: Easily upload and process PDF documents in seconds.
-- **Smart Chat History**: Keep track of your previous questions and AI's answers.
-- **Customizable AI Behavior**: Modify the system prompt to personalize how the AI responds.
-- **Intuitive Interface**: User-friendly interface powered by **Streamlit**.
 
 ## 🚀 Getting Started
 
@@ -46,7 +39,10 @@ To get started with the **PDF Chat Assistant**, you will need to have:
    ```plaintext
    GROQ_API_TOKEN=your_groq_api_key_here
    ```
-
+4. **Setup vectorsotre file**
+    ```plaintext
+   Run preprocess_storevector.py to make vectorstore.pkl 
+   ```
 ### 🎯 How to Use
 
 1. **Run the Application**
@@ -54,7 +50,9 @@ To get started with the **PDF Chat Assistant**, you will need to have:
    Start the application using the following command:
 
    ```bash
-   streamlit run app.py
+   streamlit run app.py for original ver
+   streamlit run newapp.py for fix ver with some edit
+   streamlit run mix.py for static ver
    ```
 
 2. **Upload PDFs**
@@ -69,10 +67,6 @@ To get started with the **PDF Chat Assistant**, you will need to have:
 
    Modify the system prompt to change how the AI responds. For example, you can ask it to be more casual, technical, or creative!
 
-### Example Prompt Customization:
-```plaintext
-You are a casual AI assistant. Answer questions with a friendly and humorous tone while providing accurate information.
-```
 
 ## 🛠️ Project Architecture
 
