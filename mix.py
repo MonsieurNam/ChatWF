@@ -12,7 +12,6 @@ from langchain.chains import LLMChain
 from langchain_community.retrievers import BM25Retriever 
 from typing import Optional, List, Mapping, Any
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from groq import Groq
 from dotenv import load_dotenv
