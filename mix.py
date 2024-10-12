@@ -494,7 +494,7 @@ def main():
     st.sidebar.markdown("---")
     if st.session_state.messages:
         st.sidebar.header("📜 Lịch Sử Trò Chuyện")
-        for message in st.session_state.messages:
+        for message in st.session_state.messages[::-1]:
             if message["role"] == "user":
                 st.sidebar.markdown(user_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
             else:
