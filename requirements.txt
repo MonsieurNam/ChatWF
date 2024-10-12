@@ -1,8 +1,9 @@
 streamlit
 python-dotenv
 PyPDF2
-langchain==0.2.16
-langchain-community
+transformers==4.45.2
+langchain==0.3.3
+langchain-community==0.3.2
 faiss-cpu
 huggingface-hub
 groq
