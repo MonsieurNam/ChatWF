@@ -7,8 +7,10 @@ from PyPDF2 import PdfReader
 from langdetect import detect
 from langchain.llms.base import LLM
 from pydantic import BaseModel, Field
+from langchain_core.prompts import PromptTemplate 
+from langchain.chains import LLMChain              
+from langchain_community.retrievers import BM25Retriever 
 from typing import Optional, List, Mapping, Any
-from langchain import PromptTemplate, LLMChain
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
@@ -16,7 +18,7 @@ from groq import Groq
 from dotenv import load_dotenv
 from langchain.docstore.document import Document
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.retrievers import BM25Retriever
+
 
 # load_dotenv()
 # groq_api_key = os.getenv("GROQ_API_TOKEN")
