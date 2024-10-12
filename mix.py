@@ -18,8 +18,8 @@ from dotenv import load_dotenv
 from langchain.schema import Document
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.docstore.document import Document
-from langchain.retrievers import BM25Retriever
-
+# from langchain.retrievers import BM25Retriever
+from langchain_community.retrievers import BM25Retriever
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_TOKEN")
 
