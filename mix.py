@@ -266,9 +266,9 @@ def handle_userinput(user_question):
         ai_response = st.session_state.chat_history[-1].content
 
     # Update message history
-    st.session_state.messages.append({"role": "user", "content": user_question})
     st.session_state.messages.append({"role": "assistant", "content": ai_response})
-
+    st.session_state.messages.append({"role": "user", "content": user_question})
+    
 def clear_chat_history():
     st.session_state.messages = []
     st.session_state.chat_history = []
