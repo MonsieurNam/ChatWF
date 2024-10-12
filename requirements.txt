@@ -10,3 +10,4 @@ pydantic
 sentence-transformers
 langdetect
 PyMuPDF
+gdown
