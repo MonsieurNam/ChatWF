@@ -33,9 +33,13 @@ def download_vectorstore():
 # Hàm tải vectorstore từ tệp
 @st.cache_data
 def load_vectorstore():
-    with open("vectorstore.pkl", "rb") as f:
-        vectorstore = pickle.load(f)
-    return vectorstore
+    try:
+        with open("vectorstore.pkl", "rb") as f:
+            vectorstore = pickle.load(f)
+        return vectorstore
+    except Exception as e:
+        st.error(f"Lỗi khi tải vectorstore: {e}")
+        return None
 
 # Định nghĩa lớp GroqWrapper
 class GroqWrapper(LLM, BaseModel):
@@ -53,7 +57,7 @@ class GroqWrapper(LLM, BaseModel):
         try:
             # Xây dựng danh sách messages bao gồm lịch sử hội thoại
             messages = [{"role": "system", "content": self.system_prompt}]
-            
+
             # Thêm lịch sử hội thoại từ session_state (nếu có)
             if 'messages' in st.session_state and st.session_state.messages:
                 for msg in st.session_state.messages[::-1]:  # Lấy lịch sử từ cũ đến mới
@@ -61,10 +65,10 @@ class GroqWrapper(LLM, BaseModel):
                         messages.append({"role": "user", "content": msg["content"]})
                     else:
                         messages.append({"role": "assistant", "content": msg["content"]})
-            
+
             # Thêm tin nhắn mới của người dùng
             messages.append({"role": "user", "content": prompt})
-            
+
             completion = self.client.chat.completions.create(
                 model=self.model_name,
                 messages=messages,
@@ -93,7 +97,7 @@ class GroqWrapper(LLM, BaseModel):
 # Hàm tạo conversation chain
 def get_conversation_chain(vectorstore):
     memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
-    
+
     if not groq_api_key:
         raise ValueError("GROQ_API_TOKEN is not set in the environment variables")
 
@@ -107,10 +111,6 @@ def get_conversation_chain(vectorstore):
 
 def handle_userinput(user_question):
     modified_question = user_question
-    message_placeholder = st.sidebar.empty()
-
-    with message_placeholder.container():
-        st.markdown(loading_template, unsafe_allow_html=True)
 
     response = st.session_state.conversation({'question': modified_question})
     st.session_state.chat_history = response['chat_history']
@@ -129,13 +129,9 @@ def handle_userinput(user_question):
         st.session_state.chat_history = response['chat_history']
         ai_response = st.session_state.chat_history[-1].content
 
-    message_placeholder.markdown(bot_template.replace("{{MSG}}", ai_response), unsafe_allow_html=True)
-
-    new_messages = []
-    new_messages.append({"role": "user", "content": user_question})
-    new_messages.append({"role": "assistant", "content": ai_response})
-
-    st.session_state.messages = new_messages + st.session_state.messages
+    # Cập nhật lịch sử tin nhắn
+    st.session_state.messages.insert(0, {"role": "assistant", "content": ai_response})
+    st.session_state.messages.insert(0, {"role": "user", "content": user_question})
 
 def clear_chat_history():
     st.session_state.messages = []
@@ -208,32 +204,27 @@ def initialize_session_state(total_pages=0):
 def main():
     st.set_page_config(page_title="Giáo dục Tiểu học Khóa 48-A2", layout="wide")
     st.write(css, unsafe_allow_html=True)
-    
-    # Hiển thị spinner trong khi tải mô hình và dữ liệu
-    placeholder = st.empty()
-    with placeholder.container():
-        st.title("Đang tải mô hình và dữ liệu...")
-        with st.spinner("Đang tải mô hình và dữ liệu, vui lòng đợi..."):
-            # Tải vectorstore nếu chưa tồn tại
-            download_vectorstore()
-            # Tải vectorstore
-            if 'vectorstore' not in st.session_state:
-                st.session_state.vectorstore = load_vectorstore()
-            # Khởi tạo conversation chain
-            if 'conversation' not in st.session_state:
-                st.session_state.conversation = get_conversation_chain(st.session_state.vectorstore)
-            # Khởi tạo các biến session_state khác
-            if 'chat_history' not in st.session_state:
-                st.session_state.chat_history = []
-            if 'messages' not in st.session_state:
-                st.session_state.messages = []
 
-    # Xóa placeholder sau khi tải xong
-    placeholder.empty()
-    
+    # Khởi tạo các biến session_state
+    if 'vectorstore' not in st.session_state:
+        # Tải vectorstore nếu chưa tồn tại
+        download_vectorstore()
+        st.session_state.vectorstore = load_vectorstore()
+        if st.session_state.vectorstore is None:
+            st.stop()  # Dừng ứng dụng nếu không tải được vectorstore
+
+    if 'conversation' not in st.session_state:
+        st.session_state.conversation = get_conversation_chain(st.session_state.vectorstore)
+
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
+
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+
     # Tiếp tục hiển thị giao diện người dùng
     st.title("Giáo dục Tiểu học Khóa 48-A2")
-    
+
     # Định nghĩa thư mục dữ liệu và đường dẫn đến data_detail.txt
     data_dir = "./data"
     data_detail_path = "./data_detail.txt"
@@ -258,14 +249,14 @@ def main():
         st.sidebar.header("Chọn Phần Con")
         sub_sections = [section for section in sections if section['start'] >= selected_main_section_details['start'] and section['start'] <= selected_main_section_details['end']]
         selected_sub_section_name = st.sidebar.selectbox("Chọn một phần con:", [section['name'] for section in sub_sections])
-        
+
         # Tìm chi tiết của phần con đã chọn
         selected_sub_section = next((s for s in sections if s['name'] == selected_sub_section_name), None)
-        
+
         if not selected_sub_section:
             st.error("Không tìm thấy phần đã chọn.")
             return
-        
+
         # Tạo danh sách số trang cho phần đã chọn
         page_numbers = get_page_numbers(selected_sub_section)
     else:
@@ -362,7 +353,7 @@ def main():
         handle_userinput(user_question)
 
     # Hiển thị tin nhắn trò chuyện
-    for message in st.session_state.messages[::-1]:
+    for message in st.session_state.messages:
         if message["role"] == "user":
             st.sidebar.markdown(user_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
         else:
