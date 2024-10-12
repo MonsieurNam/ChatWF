@@ -25,7 +25,7 @@ groq_api_key = os.environ.get("GROQ_API_TOKEN")
 def download_vectorstore():
     if not os.path.exists("vectorstore.pkl"):
         # ID tệp từ URL
-        file_id = '1EW5RCty6Ll10FcLx9dyigmM4i-dL_AJv'  # Cập nhật ID tệp
+        file_id = '1dJo8_RbH69PwoZ85oHdzAl5nYj43eKN6'  # Cập nhật ID tệp
         url = f'https://drive.google.com/uc?id={file_id}'
         output = 'vectorstore.pkl'
         gdown.download(url, output, quiet=False)
