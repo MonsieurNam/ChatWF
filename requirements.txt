@@ -1,7 +1,7 @@
 streamlit
 python-dotenv
 PyPDF2
-langchain
+langchain==0.2.16
 langchain-community
 faiss-cpu
 huggingface-hub
