@@ -7,25 +7,21 @@ from PyPDF2 import PdfReader
 from langdetect import detect
 from langchain.llms.base import LLM
 from pydantic import BaseModel, Field
-from langchain_core.prompts import PromptTemplate 
-from langchain.chains import LLMChain              
-from langchain_community.retrievers import BM25Retriever 
 from typing import Optional, List, Mapping, Any
+from langchain import PromptTemplate, LLMChain
 from langchain.chains import ConversationalRetrievalChain
+from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from groq import Groq
+import os
 from dotenv import load_dotenv
-from langchain.docstore.document import Document
+from langchain.schema import Document
 from langchain.text_splitter import CharacterTextSplitter
+from langchain.docstore.document import Document
+from langchain.retrievers import BM25Retriever
 
-
-# load_dotenv()
-# groq_api_key = os.getenv("GROQ_API_TOKEN")
-groq_api_key = st.secrets["GROQ_API_TOKEN"]
-# Kiểm tra khóa API
-if not groq_api_key:
-    st.error("GROQ_API_TOKEN không được thiết lập trong biến môi trường.")
-    st.stop()
+load_dotenv()
+groq_api_key = os.getenv("GROQ_API_TOKEN")
 
 # Updated CSS and HTML templates
 css = '''
@@ -165,10 +161,10 @@ class GroqWrapper(LLM, BaseModel):
             # Add conversation history from session_state (if any)
             if 'messages' in st.session_state and st.session_state.messages:
                 for msg in st.session_state.messages:
-                    if msg["role"] == "assistant":
-                        messages.append({"role": "assistant", "content": msg["content"]})
-                    else:
+                    if msg["role"] == "user":
                         messages.append({"role": "user", "content": msg["content"]})
+                    else:
+                        messages.append({"role": "assistant", "content": msg["content"]})
 
             # Add user's new message
             messages.append({"role": "user", "content": prompt})
@@ -222,14 +218,16 @@ def create_documents(chunks):
     docs = [Document(page_content=chunk) for chunk in chunks]
     return docs
 
-@st.cache_data
-def get_bm25_retriever(_docs):
-    retriever = BM25Retriever.from_documents(_docs)
+def get_bm25_retriever(docs):
+    retriever = BM25Retriever.from_documents(docs)
     return retriever
 
 # Function to create conversation chain
 def get_conversation_chain(retriever):
     memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
+
+    if not groq_api_key:
+        raise ValueError("GROQ_API_TOKEN is not set in the environment variables")
 
     llm = GroqWrapper()
     conversation_chain = ConversationalRetrievalChain.from_llm(
@@ -239,16 +237,10 @@ def get_conversation_chain(retriever):
     )
     return conversation_chain
 
-# Function to add messages ensuring order
-def add_message(role: str, content: str):
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
-    st.session_state.messages.append({"role": role, "content": content})
-
-# Function to handle user input
 def handle_userinput(user_question):
     modified_question = user_question
-    # Hiển thị tin nhắn đang tải
+
+    # Display loading message
     with st.spinner('Đang xử lý...'):
         placeholder = st.sidebar.empty()
         placeholder.markdown(loading_template, unsafe_allow_html=True)
@@ -256,7 +248,7 @@ def handle_userinput(user_question):
         response = st.session_state.conversation({'question': modified_question})
         st.session_state.chat_history = response['chat_history']
 
-        # Loại bỏ tin nhắn đang tải
+        # Remove loading message
         placeholder.empty()
 
     ai_response = st.session_state.chat_history[-1].content
@@ -273,10 +265,10 @@ def handle_userinput(user_question):
         st.session_state.chat_history = response['chat_history']
         ai_response = st.session_state.chat_history[-1].content
 
-    # Thêm phản hồi của trợ lý vào lịch sử
-    add_message("assistant", ai_response)
-    # Thêm tin nhắn của người dùng vào lịch sử
-    add_message("user", user_question)
+    # Update message history
+    st.session_state.messages.append({"role": "user", "content": user_question})
+    st.session_state.messages.append({"role": "assistant", "content": ai_response})
+
 def clear_chat_history():
     st.session_state.messages = []
     st.session_state.chat_history = []
@@ -503,10 +495,10 @@ def main():
     if st.session_state.messages:
         st.sidebar.header("📜 Lịch Sử Trò Chuyện")
         for message in st.session_state.messages[::-1]:
-            if message["role"] == "assistant":
-                st.sidebar.markdown(bot_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
-            else:
+            if message["role"] == "user":
                 st.sidebar.markdown(user_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
+            else:
+                st.sidebar.markdown(bot_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
 
     if st.sidebar.button("🧹 Xóa lịch sử trò chuyện"):
         clear_chat_history()
