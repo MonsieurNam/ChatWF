@@ -164,10 +164,10 @@ class GroqWrapper(LLM, BaseModel):
             # Add conversation history from session_state (if any)
             if 'messages' in st.session_state and st.session_state.messages:
                 for msg in st.session_state.messages:
-                    if msg["role"] == "user":
-                        messages.append({"role": "user", "content": msg["content"]})
-                    else:
+                    if msg["role"] == "assistant":
                         messages.append({"role": "assistant", "content": msg["content"]})
+                    else:
+                        messages.append({"role": "user", "content": msg["content"]})
 
             # Add user's new message
             messages.append({"role": "user", "content": prompt})
@@ -247,10 +247,6 @@ def add_message(role: str, content: str):
 # Function to handle user input
 def handle_userinput(user_question):
     modified_question = user_question
-
-    # Thêm tin nhắn của người dùng vào lịch sử
-    add_message("user", user_question)
-
     # Hiển thị tin nhắn đang tải
     with st.spinner('Đang xử lý...'):
         placeholder = st.sidebar.empty()
@@ -278,7 +274,8 @@ def handle_userinput(user_question):
 
     # Thêm phản hồi của trợ lý vào lịch sử
     add_message("assistant", ai_response)
-    
+    # Thêm tin nhắn của người dùng vào lịch sử
+    add_message("user", user_question)
 def clear_chat_history():
     st.session_state.messages = []
     st.session_state.chat_history = []
@@ -504,7 +501,7 @@ def main():
     st.sidebar.markdown("---")
     if st.session_state.messages:
         st.sidebar.header("📜 Lịch Sử Trò Chuyện")
-        for message in st.session_state.messages:
+        for message in st.session_state.messages[::-1]:
             if message["role"] == "assistant":
                 st.sidebar.markdown(bot_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
             else:
