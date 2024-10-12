@@ -132,12 +132,14 @@ user_template = '''
 </div>
 '''
 
-loading_template = """
-<div style="background-color:#e8f5e9; padding:10px; border-radius:10px; margin:5px 0;">
-    <strong>AI:</strong>
-    <p><img src="https://i.imgur.com/6RMhx.gif" width="20" style="vertical-align: middle;"> Đang xử lý...</p>
+loading_template = '''
+<div class="chat-message bot">
+    <div class="avatar">
+        <img src="https://cdn.pixabay.com/photo/2017/03/31/23/11/robot-2192617_1280.png">
+    </div>
+    <div class="message">🤖 Tôi đang đọc tài liệu...</div>
 </div>
-"""
+'''
 
 # Define GroqWrapper class
 class GroqWrapper(LLM, BaseModel):
@@ -158,7 +160,7 @@ class GroqWrapper(LLM, BaseModel):
 
             # Add conversation history from session_state (if any)
             if 'messages' in st.session_state and st.session_state.messages:
-                for msg in st.session_state.messages[::-1]:  # From oldest to newest
+                for msg in st.session_state.messages:
                     if msg["role"] == "user":
                         messages.append({"role": "user", "content": msg["content"]})
                     else:
@@ -238,8 +240,16 @@ def get_conversation_chain(retriever):
 def handle_userinput(user_question):
     modified_question = user_question
 
-    response = st.session_state.conversation({'question': modified_question})
-    st.session_state.chat_history = response['chat_history']
+    # Display loading message
+    with st.spinner('Đang xử lý...'):
+        placeholder = st.sidebar.empty()
+        placeholder.markdown(loading_template, unsafe_allow_html=True)
+
+        response = st.session_state.conversation({'question': modified_question})
+        st.session_state.chat_history = response['chat_history']
+
+        # Remove loading message
+        placeholder.empty()
 
     ai_response = st.session_state.chat_history[-1].content
 
@@ -256,8 +266,8 @@ def handle_userinput(user_question):
         ai_response = st.session_state.chat_history[-1].content
 
     # Update message history
-    st.session_state.messages.insert(0, {"role": "assistant", "content": ai_response})
-    st.session_state.messages.insert(0, {"role": "user", "content": user_question})
+    st.session_state.messages.append({"role": "user", "content": user_question})
+    st.session_state.messages.append({"role": "assistant", "content": ai_response})
 
 def clear_chat_history():
     st.session_state.messages = []
@@ -484,7 +494,7 @@ def main():
     st.sidebar.markdown("---")
     if st.session_state.messages:
         st.sidebar.header("📜 Lịch Sử Trò Chuyện")
-        for message in reversed(st.session_state.messages):
+        for message in st.session_state.messages:
             if message["role"] == "user":
                 st.sidebar.markdown(user_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
             else:
