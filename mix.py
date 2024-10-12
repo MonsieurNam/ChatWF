@@ -13,13 +13,12 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from groq import Groq
-import os
 from dotenv import load_dotenv
 from langchain.schema import Document
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.docstore.document import Document
 from langchain.retrievers import BM25Retriever
 
+# Load environment variables
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_TOKEN")
 
@@ -238,40 +237,38 @@ def get_conversation_chain(retriever):
     return conversation_chain
 
 def handle_userinput(user_question):
-    modified_question = user_question
-
-    # Display loading message
-    with st.spinner('Đang xử lý...'):
-        placeholder = st.sidebar.empty()
-        placeholder.markdown(loading_template, unsafe_allow_html=True)
-
-        response = st.session_state.conversation({'question': modified_question})
-        st.session_state.chat_history = response['chat_history']
-
-        # Remove loading message
-        placeholder.empty()
-
-    ai_response = st.session_state.chat_history[-1].content
-
-    try:
-        language = detect(ai_response)
-    except:
-        language = 'unknown'
-
-    if language != 'vi':
-        st.warning("AI đã trả lời bằng ngôn ngữ khác. Đang yêu cầu AI trả lời lại bằng tiếng Việt...")
-        modified_question = user_question + " Vui lòng trả lời bằng tiếng Việt."
-        response = st.session_state.conversation({'question': modified_question})
-        st.session_state.chat_history = response['chat_history']
-        ai_response = st.session_state.chat_history[-1].content
-
-    # Update message history
+    # Append user message
     st.session_state.messages.append({"role": "user", "content": user_question})
-    st.session_state.messages.append({"role": "assistant", "content": ai_response})
+    # Append loading message
+    st.session_state.messages.append({"role": "assistant", "content": "🤖 Tôi đang đọc tài liệu..."})
+    # Set processing flag
+    st.session_state.is_processing = True
+    # Trigger rerun to display loading message
+    st.experimental_rerun()
+
+def process_ai_response():
+    if 'is_processing' in st.session_state and st.session_state.is_processing:
+        # Check if last message is loading message
+        if st.session_state.messages and st.session_state.messages[-1]['content'] == "🤖 Tôi đang đọc tài liệu...":
+            user_question = st.session_state.messages[-2]['content']
+            try:
+                response = st.session_state.conversation({'question': user_question})
+                st.session_state.chat_history = response['chat_history']
+                ai_response = st.session_state.chat_history[-1].content
+            except Exception as e:
+                ai_response = "Đã xảy ra lỗi khi tạo phản hồi."
+                st.error(f"Lỗi khi tạo phản hồi: {e}")
+            # Replace loading message with ai_response
+            st.session_state.messages.pop()  # Remove loading message
+            st.session_state.messages.append({"role": "assistant", "content": ai_response})
+            st.session_state.is_processing = False
+            # Trigger rerun to display AI response
+            st.experimental_rerun()
 
 def clear_chat_history():
     st.session_state.messages = []
     st.session_state.chat_history = []
+    st.session_state.is_processing = False
 
 # Functions related to PDF processing (keep as is)
 def pymupdf_parse_page(pdf_path: str, page_number: int = 0) -> str:
@@ -359,6 +356,12 @@ def main():
 
     if 'messages' not in st.session_state:
         st.session_state.messages = []
+
+    if 'is_processing' not in st.session_state:
+        st.session_state.is_processing = False
+
+    # Process AI response if in processing state
+    process_ai_response()
 
     # Continue displaying the user interface
     st.title("Giáo dục Tiểu học Khóa 48-A2")
