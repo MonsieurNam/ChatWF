@@ -11,3 +11,4 @@ sentence-transformers
 langdetect
 PyMuPDF
 gdown
+rank_bm25
