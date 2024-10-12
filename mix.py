@@ -3,7 +3,7 @@ import fitz  # PyMuPDF
 import os
 from io import BytesIO
 import pickle
-# from dotenv import load_dotenv  # Đã loại bỏ
+from dotenv import load_dotenv
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.llms.base import LLM
@@ -16,19 +16,16 @@ from langdetect import detect
 import requests
 import gdown  # Thư viện để tải tệp từ Google Drive
 
-# Loại bỏ việc tải biến môi trường từ .env
-# load_dotenv()
-
-# Lấy API key từ Streamlit Secrets
+# Tải biến môi trường
+#load_dotenv()
+#groq_api_key = os.environ.get("GROQ_API_TOKEN")
 groq_api_key = st.secrets["GROQ_API_TOKEN"]
-
 # Hàm tải tệp vectorstore.pkl từ Google Drive
 @st.cache_data
 def download_vectorstore():
     if not os.path.exists("vectorstore.pkl"):
         # ID tệp từ URL
-        #https://drive.google.com/file/d/1dJo8_RbH69PwoZ85oHdzAl5nYj43eKN6/view?usp=drive_link
-        file_id = '1dJo8_RbH69PwoZ85oHdzAl5nYj43eKN6'  # Cập nhật ID tệp nếu cần
+        file_id = '1dJo8_RbH69PwoZ85oHdzAl5nYj43eKN6'  # Cập nhật ID tệp
         url = f'https://drive.google.com/uc?id={file_id}'
         output = 'vectorstore.pkl'
         gdown.download(url, output, quiet=False)
@@ -63,7 +60,7 @@ class GroqWrapper(LLM, BaseModel):
 
             # Thêm lịch sử hội thoại từ session_state (nếu có)
             if 'messages' in st.session_state and st.session_state.messages:
-                for msg in reversed(st.session_state.messages):  # Lấy lịch sử từ cũ đến mới
+                for msg in st.session_state.messages[::-1]:  # Lấy lịch sử từ cũ đến mới
                     if msg["role"] == "user":
                         messages.append({"role": "user", "content": msg["content"]})
                     else:
@@ -102,7 +99,7 @@ def get_conversation_chain(vectorstore):
     memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
 
     if not groq_api_key:
-        raise ValueError("GROQ_API_TOKEN is not set in the secrets")
+        raise ValueError("GROQ_API_TOKEN is not set in the environment variables")
 
     llm = GroqWrapper()
     conversation_chain = ConversationalRetrievalChain.from_llm(
@@ -209,26 +206,21 @@ def main():
     st.write(css, unsafe_allow_html=True)
 
     # Khởi tạo các biến session_state
-    if 'vectorstore_loaded' not in st.session_state:
-        st.session_state.vectorstore_loaded = False
-
-    if not st.session_state.vectorstore_loaded:
+    if 'vectorstore' not in st.session_state:
         # Tải vectorstore nếu chưa tồn tại
-        success = download_vectorstore()
-        if success:
-            vectorstore = load_vectorstore()
-            if vectorstore is not None:
-                st.session_state.vectorstore = vectorstore
-                st.session_state.conversation = get_conversation_chain(st.session_state.vectorstore)
-                st.session_state.chat_history = []
-                st.session_state.messages = []
-                st.session_state.vectorstore_loaded = True
-            else:
-                st.error("Không thể tải vectorstore. Vui lòng kiểm tra lại.")
-                st.stop()
-        else:
-            st.error("Không thể tải vectorstore.pkl từ nguồn bên ngoài.")
-            st.stop()
+        download_vectorstore()
+        st.session_state.vectorstore = load_vectorstore()
+        if st.session_state.vectorstore is None:
+            st.stop()  # Dừng ứng dụng nếu không tải được vectorstore
+
+    if 'conversation' not in st.session_state:
+        st.session_state.conversation = get_conversation_chain(st.session_state.vectorstore)
+
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
+
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
 
     # Tiếp tục hiển thị giao diện người dùng
     st.title("Giáo dục Tiểu học Khóa 48-A2")
@@ -255,7 +247,7 @@ def main():
     # Xử lý lựa chọn phần con nếu có
     if selected_main_section and selected_main_section.startswith("XÂY DỰNG"):
         st.sidebar.header("Chọn Phần Con")
-        sub_sections = [section for section in sections if section['start'] >= selected_main_section_details['start'] and section['end'] <= selected_main_section_details['end']]
+        sub_sections = [section for section in sections if section['start'] >= selected_main_section_details['start'] and section['start'] <= selected_main_section_details['end']]
         selected_sub_section_name = st.sidebar.selectbox("Chọn một phần con:", [section['name'] for section in sub_sections])
 
         # Tìm chi tiết của phần con đã chọn
@@ -361,7 +353,7 @@ def main():
         handle_userinput(user_question)
 
     # Hiển thị tin nhắn trò chuyện
-    for message in reversed(st.session_state.messages):
+    for message in st.session_state.messages:
         if message["role"] == "user":
             st.sidebar.markdown(user_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
         else:
