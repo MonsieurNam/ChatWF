@@ -23,39 +23,121 @@ from langchain.retrievers import BM25Retriever
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_TOKEN")
 
+# Updated CSS and HTML templates
 css = '''
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap');
+
+body {
+    background-color: #f0f2f6;
+    font-family: 'Roboto', sans-serif;
+}
 .chat-message {
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 10px;
+    padding: 1.5rem;
+    border-radius: 0.8rem;
+    margin-bottom: 1rem;
+    display: flex;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: all 0.3s ease-in-out;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeIn 0.5s ease-out forwards;
 }
-.user .chat-message {
-    background-color: #dcf8c6;
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
-.bot .chat-message {
-    background-color: #f1f0f0;
+.chat-message.user {
+    background-color: #2b313e;
+}
+.chat-message.bot {
+    background-color: #475063;
+}
+.chat-message .avatar {
+    width: 15%;
+}
+.chat-message .avatar img {
+    max-width: 60px;
+    max-height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #fff;
+}
+.chat-message .message {
+    width: 85%;
+    padding: 0 1.5rem;
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+.stTextInput > div > div > input {
+    background-color: #f0f2f6;
+    color: #2b313e;
+    border-radius: 0.5rem;
+    border: 1px solid #ccc;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+.stTextInput > div > div > input:focus {
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+.stButton > button {
+    border-radius: 0.5rem;
+    font-weight: 500;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+.stButton > button:hover {
+    background-color: #45a049;
+}
+.stTextArea > div > div > textarea {
+    background-color: #f0f2f6;
+    color: #2b313e;
+    border-radius: 0.5rem;
+    border: 1px solid #ccc;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+.stTextArea > div > div > textarea:focus {
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
 }
 </style>
 '''
 
-user_template = '''
-<div class="chat-message user">
-    <div style="display: flex; align-items: center;">
-        <img src="https://i.imgur.com/6ZQ1qTm.png" width="30" height="30" style="margin-right: 10px;">
-        <div>{{MSG}}</div>
+bot_template = '''
+<div class="chat-message bot">
+    <div class="avatar">
+        <img src="https://cdn.pixabay.com/photo/2017/03/31/23/11/robot-2192617_1280.png">
     </div>
+    <div class="message">{{MSG}}</div>
 </div>
 '''
 
-bot_template = '''
-<div class="chat-message bot">
-    <div style="display: flex; align-items: center;">
-        <img src="https://i.imgur.com/nGF1K8f.png" width="30" height="30" style="margin-right: 10px;">
-        <div>{{MSG}}</div>
-    </div>
+user_template = '''
+<div class="chat-message user">
+    <div class="avatar">
+        <img src="https://cdn.pixabay.com/photo/2017/11/10/05/48/user-2935527_1280.png">
+    </div>    
+    <div class="message">{{MSG}}</div>
 </div>
 '''
+
+loading_template = """
+<div style="background-color:#e8f5e9; padding:10px; border-radius:10px; margin:5px 0;">
+    <strong>AI:</strong>
+    <p><img src="https://i.imgur.com/6RMhx.gif" width="20" style="vertical-align: middle;"> Đang xử lý...</p>
+</div>
+"""
 
 # Define GroqWrapper class
 class GroqWrapper(LLM, BaseModel):
@@ -130,12 +212,10 @@ def get_text_chunks(text):
     chunks = text_splitter.split_text(text)
     return chunks
 
-# Removed caching from this function
 def create_documents(chunks):
     docs = [Document(page_content=chunk) for chunk in chunks]
     return docs
 
-# Removed caching from this function
 def get_bm25_retriever(docs):
     retriever = BM25Retriever.from_documents(docs)
     return retriever
@@ -401,11 +481,14 @@ def main():
         handle_userinput(user_question)
 
     # Display chat messages
-    for message in st.session_state.messages:
-        if message["role"] == "user":
-            st.sidebar.markdown(user_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
-        else:
-            st.sidebar.markdown(bot_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
+    st.sidebar.markdown("---")
+    if st.session_state.messages:
+        st.sidebar.header("📜 Lịch Sử Trò Chuyện")
+        for message in reversed(st.session_state.messages):
+            if message["role"] == "user":
+                st.sidebar.markdown(user_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
+            else:
+                st.sidebar.markdown(bot_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
 
     if st.sidebar.button("🧹 Xóa lịch sử trò chuyện"):
         clear_chat_history()
