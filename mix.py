@@ -130,12 +130,12 @@ def get_text_chunks(text):
     chunks = text_splitter.split_text(text)
     return chunks
 
-@st.cache_data
+# Removed caching from this function
 def create_documents(chunks):
     docs = [Document(page_content=chunk) for chunk in chunks]
     return docs
 
-@st.cache_data
+# Removed caching from this function
 def get_bm25_retriever(docs):
     retriever = BM25Retriever.from_documents(docs)
     return retriever
